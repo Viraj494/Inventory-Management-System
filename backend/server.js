@@ -1,41 +1,46 @@
-const dotenv = require("dotenv").config();
 const express = require("express");
+const dotenv = require("dotenv");
+const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
-const bodyParser = require("body-parser");
-const cors = require("cors");
-const userRoute = require("./routes/userRoute");
-const errorHandler = require("./middleWare/errorMiddleware");
-const coookieParser = require("cookie-parser");
+const path = require("path");
+const fs = require("fs");
+const userRoutes = require("./routes/userRoute");
+const productRoutes = require("./routes/productRoute");
+const { errorHandler } = require("./middleware/errorMiddleware");
 
+dotenv.config();
 
 const app = express();
 
-//Middlewares
-app.use(express.json());
-app.use(coookieParser());
-app.use(express.urlencoded({extended: false}));
-app.use(bodyParser.json());
-app.use(cors());
+// Middleware
+app.use(express.json()); // Parse incoming JSON requests
+app.use(cookieParser()); // Parse cookies
 
-//Routes Middleware
-app.use("/api/users", userRoute)
+// Create 'uploads' directory if it doesn't exist
+const uploadsDir = path.join(__dirname, "uploads");
 
-//Routes
-app.get("/", (req, res) => {
-    res.send("Home Page");
-});
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);  // Create the 'uploads' folder if it doesn't exist
+}
 
-const PORT = process.env.PORT || 5000;
+// Routes
+app.use("/api/users", userRoutes);
+app.use("/api/products", productRoutes);
 
-//error middleware
+// Error handling middleware (catch any errors)
 app.use(errorHandler);
 
-//connect to the database
+// Connect to MongoDB
 mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() => {
-        app.listen(PORT, () => {
-            console.log(`Server running on port ${PORT}`);
-        })
+    .connect(process.env.MONGO_URI, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
     })
-    .catch((err) => console.log(err));
+    .then(() => console.log("MongoDB connected"))
+    .catch((error) => console.error("MongoDB connection error:", error));
+
+// Server
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
